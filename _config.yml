@@ -8,7 +8,7 @@
 
 # Basic Site Settings
 locale                   : "en-US"
-title                    : "🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴"
+title                    : "🌴🌴🌴🌴🌴🌴🌴"
 title_separator          : "-"
 name                     : &name "Yang Xiangdong"
 description              : &description "personal description"
@@ -23,16 +23,16 @@ author:
   # Biographic information
   avatar           : "profile_01.jpg"
   name             : "Yang Xiangdong"
-  pronouns         : # example: "she/her"  
-  bio              : "Student"
-  location         : "Chengdu, China"
-  employer         : # "University of Electronic Science and Technology of China"
+  pronouns         : "he"
+  bio              : "Coding ..."
+  location         : "Beijing, China"
+  employer         : "Baidu Inc"
   uri              : # URL
-  email            : "yangxiangdong.cs@aliyun.com" 
+  email            : "yangxiangdong.cs@gmail.com" 
 
   # Academic websites
   arxiv            : # URL - Update with the correct link to your profile
-  googlescholar    : # "https://scholar.google.com/citations?user=PS_CX0AAAAAJ"
+  googlescholar    : "https://scholar.google.com/citations?hl=en&user=j7xebJAAAAAJ"
   impactstory      : # URL
   orcid            : "http://orcid.org/0009-0000-8507-2940"
   pubmed           : # "https://www.ncbi.nlm.nih.gov/pubmed/?term=john+snow"
