@@ -23,10 +23,10 @@ author:
   # Biographic information
   avatar           : "profile_01.jpg"
   name             : "Yang Xiangdong"
-  pronouns         : "he"
+  pronouns         : ""
   bio              : "Coding ..."
   location         : "Beijing, China"
-  employer         : "Baidu Inc"
+  employer         : "Baidu"
   uri              : # URL
   email            : "yangxiangdong.cs@gmail.com" 
 
