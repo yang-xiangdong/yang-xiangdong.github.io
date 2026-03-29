@@ -1,4 +1,17 @@
 <script src="{{ base_path }}/assets/js/main.min.js"></script>
 
+<script>
+(function() {
+  var path = window.location.pathname.replace(/\/index\.html$/, '/').replace(/\/$/, '') || '/';
+  var links = document.querySelectorAll('.masthead__menu-item a');
+  for (var i = 0; i < links.length; i++) {
+    var href = links[i].getAttribute('href').replace(/\/$/, '') || '/';
+    if (path === href) {
+      links[i].closest('.masthead__menu-item').classList.add('active');
+    }
+  }
+})();
+</script>
+
 {% include analytics.html %}
 {% include /comments-providers/scripts.html %}

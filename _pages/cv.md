@@ -1,6 +1,6 @@
 ---
 layout: archive
-title: "CV"
+title:
 permalink: /cv/
 author_profile: false
 redirect_from:
@@ -8,12 +8,6 @@ redirect_from:
 ---
 
 {% include base_path %}
-
-<div class="cv-download-section">
-  <a href="{{ '/files/cv.pdf' | relative_url }}" class="cv-download-btn" download>
-    <i class="fas fa-download"></i> Download CV (PDF)
-  </a>
-</div>
 
 Education
 ======
