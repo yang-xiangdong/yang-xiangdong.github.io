@@ -1,7 +1,7 @@
 ---
 title: "Anthropic - 构建高效 AI 智能体"
 date: 2026-03-28
-description: "Anthropic 与数十个团队合作后发现：**最成功的 AI 智能体实现，往往依赖简单、可组合的模式，而非复杂框架。"
+description: "Anthropic 与数十个团队合作后发现：最成功的 AI 智能体实现，往往依赖简单、可组合的模式，而非复杂框架。"
 ---
 
 > 原文：[Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) · Anthropic Engineering · 2024.12
