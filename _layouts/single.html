@@ -22,34 +22,26 @@ layout: default
   {% endif %}
 {% endfor %}
 
-{% comment %}<!-- Group posts by their subdirectory name under _posts/ -->{% endcomment %}
-{% assign final_groups = "" | split: "" %}
+{% comment %}<!-- Get unique directories -->{% endcomment %}
+{% assign sidebar_directories = "" | split: "" %}
 {% for post in filtered_posts %}
-  {% assign dir = post.path | split: "/" | shift | first %}
-  {% unless dir %}
-    {% assign dir = "root" %}
+  {% assign dir_name = post.path | split: "/" | shift | first %}
+  {% unless dir_name %}
+    {% assign dir_name = "__root__" %}
   {% endunless %}
   {% assign found = false %}
-  {% for fg in final_groups %}
-    {% if fg.name == dir %}
+  {% for dir in sidebar_directories %}
+    {% if dir == dir_name %}
       {% assign found = true %}
       {% break %}
     {% endif %}
   {% endfor %}
   {% unless found %}
-    {% assign posts_in_dir = "" | split: "" %}
-    {% for p in filtered_posts %}
-      {% assign pdir = p.path | split: "/" | shift | first %}
-      {% unless pdir %}{% assign pdir = "root" %}{% endunless %}
-      {% if pdir == dir %}
-        {% assign posts_in_dir = posts_in_dir | push: p %}
-      {% endif %}
-    {% endfor %}
-    {% assign group_item = "" | split: "" %}
-    {% assign group_item = group_item | push: dir | push: posts_in_dir %}
-    {% assign final_groups = final_groups | push: group_item %}
+    {% assign sidebar_directories = sidebar_directories | push: dir_name %}
   {% endunless %}
 {% endfor %}
+
+{% assign sidebar_directories = sidebar_directories | sort %}
 
 <div id="main" role="main">
   {% comment %}<!-- Only show author sidebar on non-post pages -->{% endcomment %}
@@ -96,14 +88,20 @@ layout: default
             <div class="sidebar-inner">
               <h4 class="sidebar-heading"><i class="fas fa-sitemap"></i> Posts</h4>
               <nav class="posts-dir-nav">
-                {% for group in final_groups %}
-                  {% assign dir_name = group[0] %}
-                  {% assign posts_in_group = group[1] %}
-                  {% unless dir_name == "root" or dir_name == "" %}
+                {% for dir in sidebar_directories %}
+                  {% unless dir == "__root__" %}
+                    {% assign dir_posts = "" | split: "" %}
+                    {% for post in filtered_posts %}
+                      {% assign post_dir = post.path | split: "/" | shift | first %}
+                      {% unless post_dir %}{% assign post_dir = "__root__" %}{% endunless %}
+                      {% if post_dir == dir %}
+                        {% assign dir_posts = dir_posts | push: post %}
+                      {% endif %}
+                    {% endfor %}
                     <div class="nav-dir-group">
-                      <div class="nav-dir-header">{{ dir_name }}</div>
+                      <div class="nav-dir-header">{{ dir }}</div>
                       <ul class="nav-dir-posts">
-                        {% for post in posts_in_group %}
+                        {% for post in dir_posts %}
                           <li{% if post.url == page.url %} class="current"{% endif %}>
                             <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
                           </li>

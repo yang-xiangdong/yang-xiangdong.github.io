@@ -17,79 +17,46 @@ redirect_from:
   {% endif %}
 {% endfor %}
 
-{% comment %}<!-- Group posts by their subdirectory name under _posts/ -->{% endcomment %}
-{% assign dir_groups = "" | split: "" %}
+{% comment %}<!-- Get unique directories -->{% endcomment %}
+{% assign directories = "" | split: "" %}
 {% for post in filtered_posts %}
   {% assign dir_name = post.path | split: "/" | shift | first %}
   {% unless dir_name %}
-    {% assign dir_name = "root" %}
+    {% assign dir_name = "__root__" %}
   {% endunless %}
-  {% assign post_with_dir = post | merge: "dir": dir_name %}
-  {% assign dir_groups = dir_groups | push: post_with_dir %}
-{% endfor %}
-
-{% assign sorted_posts = dir_groups | sort: "date" | reverse %}
-
-{% comment %}<!-- Build grouped structure -->{% endcomment %}
-{% assign group_array = "" | split: "" %}
-{% for post in sorted_posts %}
-  {% assign matched = false %}
-  {% for group in group_array %}
-    {% if group.name == post.dir %}
-      {% assign matched = true %}
-      {% assign temp_items = group.items | push: post %}
-      {% assign group.items = temp_items %}
-      {% break %}
-    {% endif %}
-  {% endfor %}
-  {% unless matched %}
-    {% assign new_group = "name" | split: "," %}
-    {% assign new_group = "" | split: "" %}
-    {% capture new_group_name %}{{ post.dir }}{% endcapture %}
-    {% assign new_group = new_group | push: post %}
-    {% assign group_array = group_array | push: new_group %}
-    {% assign group_array = group_array | sort: "name" %}
-  {% endunless %}
-{% endfor %}
-
-{% comment %}<!-- Rebuild with proper structure -->{% endcomment %}
-{% assign final_groups = "" | split: "" %}
-{% for post in sorted_posts %}
-  {% assign dir = post.dir %}
   {% assign found = false %}
-  {% for fg in final_groups %}
-    {% if fg.name == dir %}
+  {% for dir in directories %}
+    {% if dir == dir_name %}
       {% assign found = true %}
       {% break %}
     {% endif %}
   {% endfor %}
   {% unless found %}
-    {% assign posts_in_dir = "" | split: "" %}
-    {% for p in sorted_posts %}
-      {% if p.dir == dir %}
-        {% assign posts_in_dir = posts_in_dir | push: p %}
-      {% endif %}
-    {% endfor %}
-    {% assign group_obj = "" | split: "" %}
-    {% assign group_obj = group_obj | push: dir %}
-    {% assign group_obj = group_obj | push: posts_in_dir %}
-    {% assign final_groups = final_groups | push: group_obj %}
+    {% assign directories = directories | push: dir_name %}
   {% endunless %}
 {% endfor %}
 
+{% assign directories = directories | sort %}
+
 <div class="posts-dir-tree">
-  {% for group in final_groups %}
-    {% assign dir_name = group[0] %}
-    {% assign posts_in_group = group[1] %}
-    {% unless dir_name == "root" or dir_name == "" %}
+  {% for dir in directories %}
+    {% unless dir == "__root__" %}
+      {% assign dir_posts = "" | split: "" %}
+      {% for post in filtered_posts %}
+        {% assign post_dir = post.path | split: "/" | shift | first %}
+        {% unless post_dir %}{% assign post_dir = "__root__" %}{% endunless %}
+        {% if post_dir == dir %}
+          {% assign dir_posts = dir_posts | push: post %}
+        {% endif %}
+      {% endfor %}
       <div class="dir-group">
         <div class="dir-header">
           <i class="fas fa-folder-open"></i>
-          <span>{{ dir_name }}</span>
-          <span class="dir-count">{{ posts_in_group.size }}</span>
+          <span>{{ dir }}</span>
+          <span class="dir-count">{{ dir_posts.size }}</span>
         </div>
         <ul class="dir-posts">
-          {% for post in posts_in_group %}
+          {% for post in dir_posts %}
             <li>
               <span class="tree-icon">├─</span>
               <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
