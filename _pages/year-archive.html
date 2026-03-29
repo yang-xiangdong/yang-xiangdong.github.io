@@ -9,7 +9,6 @@ redirect_from:
 
 {% include base_path %}
 
-{% comment %}<!-- Collect and filter posts -->{% endcomment %}
 {% assign filtered_posts = "" | split: "" %}
 {% for post in site.posts %}
   {% if post.date < site.time %}
@@ -17,7 +16,6 @@ redirect_from:
   {% endif %}
 {% endfor %}
 
-{% comment %}<!-- Get unique directories (categories) -->{% endcomment %}
 {% assign directories = "" | split: "" %}
 {% for post in filtered_posts %}
   {% assign dir_name = post.path | split: "/" | shift | first %}
@@ -39,11 +37,6 @@ redirect_from:
 {% assign directories = directories | sort %}
 
 <div class="posts-archive">
-  <div class="posts-header">
-    <h1 class="posts-title">Posts</h1>
-    <p class="posts-subtitle">{{ filtered_posts.size }} article{% if filtered_posts.size != 1 %}s{% endif %} in {{ directories.size }} topic{% if directories.size != 1 %}s{% endif %}</p>
-  </div>
-
   {% for dir in directories %}
     {% unless dir == "__root__" %}
       {% assign dir_posts = "" | split: "" %}
@@ -67,18 +60,19 @@ redirect_from:
         <div class="posts-list">
           {% for post in dir_posts %}
           <a href="{{ post.url | relative_url }}" class="post-card">
-            <div class="post-card-body">
+            <div class="post-card-head">
               <h3 class="post-card-title">{{ post.title }}</h3>
-              {% if post.excerpt %}
-                <p class="post-card-excerpt">{{ post.excerpt | strip_html | truncate: 120 }}</p>
-              {% endif %}
+              <div class="post-card-meta">
+                <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y-%m-%d" }}</time>
+                <span class="post-card-dot"></span>
+                <span class="post-card-readtime">{% assign words = post.content | number_of_words %}{% if words < 360 %}1{% else %}{{ words | divided_by: 180 }}{% endif %} min read</span>
+              </div>
             </div>
-            <div class="post-card-meta">
-              <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y-%m-%d" }}</time>
-              {% if post.read_time %}
-                <span class="post-card-readtime"><i class="fas fa-clock"></i> {% assign words = post.content | number_of_words %}{% if words < 360 %}1{% else %}{{ words | divided_by: 180 }}{% endif %} min</span>
-              {% endif %}
-            </div>
+            {% if post.description %}
+              <p class="post-card-excerpt">{{ post.description }}</p>
+            {% elsif post.excerpt %}
+              <p class="post-card-excerpt">{{ post.excerpt | strip_html | truncate: 120 }}</p>
+            {% endif %}
           </a>
           {% endfor %}
         </div>
