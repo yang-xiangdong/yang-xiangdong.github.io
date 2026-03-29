@@ -48,7 +48,7 @@ layout: default
       {% endunless %}
 
       {% if page.collection == 'posts' %}
-        {% comment %}<!-- Single-column layout for blog posts -->{% endcomment %}
+        {% comment %}<!-- Blog post layout with TOC -->{% endcomment %}
         <div class="post-content-main">
           <section class="page__content" itemprop="text">
             {{ content }}
@@ -120,96 +120,78 @@ layout: default
 </div>
 
 {% if page.collection == 'posts' %}
-<div class="post-toc-float" id="js-toc-float">
+<!-- Mobile TOC toggle -->
+<button class="toc-mobile-toggle" id="js-toc-mobile-toggle" aria-label="Toggle table of contents">
+  <i class="fas fa-list-ul"></i>
+</button>
+
+<!-- TOC panel -->
+<nav class="post-toc-float" id="js-toc-float" aria-label="Table of contents">
   <div class="toc-float-header">
-    <span class="toc-float-title"><i class="fas fa-stream"></i> On This Page</span>
-    <button class="toc-eye-btn" id="js-toc-eye" title="Hide TOC">
-      <i class="fas fa-eye"></i>
+    <span class="toc-float-title">Contents</span>
+    <button class="toc-close-btn" id="js-toc-close" title="Close" aria-label="Close table of contents">
+      <i class="fas fa-times"></i>
     </button>
   </div>
   <div class="toc-float-body">
     <div id="js-toc-list"></div>
   </div>
-</div>
-<button class="toc-ghost-btn" id="js-toc-restore" title="Show TOC" style="display:none">
-  <i class="fas fa-stream"></i>
-</button>
+  <div class="toc-float-progress">
+    <div class="toc-progress-bar" id="js-toc-progress"></div>
+  </div>
+</nav>
+<div class="toc-overlay" id="js-toc-overlay"></div>
+
 <script>
 (function() {
   var content = document.querySelector('.post-content-main .page__content');
   var tocList = document.getElementById('js-toc-list');
   var tocFloat = document.getElementById('js-toc-float');
-  var tocEye = document.getElementById('js-toc-eye');
-  var tocRestore = document.getElementById('js-toc-restore');
-
-  if (!content || !tocList) return;
-
+  var tocClose = document.getElementById('js-toc-close');
+  var tocMobileToggle = document.getElementById('js-toc-mobile-toggle');
+  var tocOverlay = document.getElementById('js-toc-overlay');
+  var tocProgress = document.getElementById('js-toc-progress');
+  if (!content || !tocList) { return; }
   var headings = Array.prototype.slice.call(content.querySelectorAll('h2, h3'));
-  if (headings.length === 0) {
-    if (tocFloat) tocFloat.style.display = 'none';
-    return;
-  }
-
-  headings.forEach(function(h, i) {
-    if (!h.id) h.id = 'toc-' + i;
-  });
-
+  if (headings.length === 0) { if (tocFloat) { tocFloat.style.display = 'none'; } if (tocMobileToggle) { tocMobileToggle.style.display = 'none'; } return; }
+  headings.forEach(function(h, i) { if (!h.id) { h.id = 'toc-' + i; } });
   var rootUl = document.createElement('ul');
   tocList.appendChild(rootUl);
   var currentH2Li = null;
   var currentH3Ul = null;
-
   headings.forEach(function(h) {
     var li = document.createElement('li');
     var a = document.createElement('a');
     a.href = '#' + h.id;
     a.textContent = h.textContent;
     li.appendChild(a);
-    if (h.tagName === 'H2') {
-      rootUl.appendChild(li);
-      currentH2Li = li;
-      currentH3Ul = null;
-    } else {
-      if (!currentH3Ul) {
-        currentH3Ul = document.createElement('ul');
-        if (currentH2Li) {
-          currentH2Li.appendChild(currentH3Ul);
-        } else {
-          rootUl.appendChild(currentH3Ul);
-        }
-      }
-      currentH3Ul.appendChild(li);
-    }
+    if (h.tagName === 'H2') { rootUl.appendChild(li); currentH2Li = li; currentH3Ul = null; }
+    else { if (!currentH3Ul) { currentH3Ul = document.createElement('ul'); if (currentH2Li) { currentH2Li.appendChild(currentH3Ul); } else { rootUl.appendChild(currentH3Ul); } } currentH3Ul.appendChild(li); }
   });
-
-  if (tocEye) {
-    tocEye.addEventListener('click', function() {
-      tocFloat.classList.add('toc-hidden');
-      tocRestore.style.display = 'flex';
-    });
-  }
-
-  if (tocRestore) {
-    tocRestore.addEventListener('click', function() {
-      tocFloat.classList.remove('toc-hidden');
-      tocRestore.style.display = 'none';
-    });
-  }
-
+  function closeToc() { tocFloat.classList.remove('toc-open'); tocOverlay.classList.remove('toc-overlay-show'); document.body.classList.remove('toc-body-lock'); }
+  function openToc() { tocFloat.classList.add('toc-open'); tocOverlay.classList.add('toc-overlay-show'); document.body.classList.add('toc-body-lock'); }
+  if (tocClose) { tocClose.addEventListener('click', closeToc); }
+  if (tocOverlay) { tocOverlay.addEventListener('click', closeToc); }
+  if (tocMobileToggle) { tocMobileToggle.addEventListener('click', function() { if (tocFloat.classList.contains('toc-open')) { closeToc(); } else { openToc(); } }); }
   var tocLinks = tocList.querySelectorAll('a');
+  tocLinks.forEach(function(link) { link.addEventListener('click', function() { if (window.innerWidth < 1100) { closeToc(); } }); });
+  var ticking = false;
   window.addEventListener('scroll', function() {
-    var scrollY = window.scrollY + 120;
-    var active = null;
-    headings.forEach(function(h) {
-      if (h.offsetTop <= scrollY) active = h;
-    });
-    tocLinks.forEach(function(a) {
-      a.classList.remove('active');
-      if (active && a.getAttribute('href') === '#' + active.id) {
-        a.classList.add('active');
-      }
-    });
+    if (!ticking) { window.requestAnimationFrame(function() {
+      var scrollY = window.scrollY || window.pageYOffset;
+      var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (tocProgress && docHeight > 0) { tocProgress.style.width = Math.min(100, (scrollY / docHeight) * 100) + '%'; }
+      var active = null;
+      var offset = 100;
+      headings.forEach(function(h) { if (h.getBoundingClientRect().top <= offset) { active = h; } });
+      tocLinks.forEach(function(a) {
+        a.classList.remove('active');
+        if (active && a.getAttribute('href') === '#' + active.id) { a.classList.add('active'); a.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+      });
+      ticking = false;
+    }); ticking = true; }
   });
+  window.dispatchEvent(new Event('scroll'));
 })();
 </script>
 {% endif %}
