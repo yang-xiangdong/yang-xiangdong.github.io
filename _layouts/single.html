@@ -120,6 +120,11 @@ layout: default
 </div>
 
 {% if page.collection == 'posts' %}
+<!-- Dark mode toggle -->
+<button class="dark-mode-toggle" id="js-dark-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+  <i class="fas fa-moon" id="js-dark-icon"></i>
+</button>
+
 <!-- Mobile TOC toggle -->
 <button class="toc-mobile-toggle" id="js-toc-mobile-toggle" aria-label="Toggle table of contents">
   <i class="fas fa-list-ul"></i>
@@ -192,6 +197,25 @@ layout: default
     }); ticking = true; }
   });
   window.dispatchEvent(new Event('scroll'));
+})();
+</script>
+<script>
+(function() {
+  var toggle = document.getElementById('js-dark-toggle');
+  var icon = document.getElementById('js-dark-icon');
+  if (!toggle) { return; }
+  var key = 'post-dark-mode';
+  var isDark = localStorage.getItem(key) === '1';
+  function apply(dark) {
+    if (dark) { document.body.classList.add('dark-mode'); icon.className = 'fas fa-sun'; }
+    else { document.body.classList.remove('dark-mode'); icon.className = 'fas fa-moon'; }
+  }
+  apply(isDark);
+  toggle.addEventListener('click', function() {
+    isDark = !isDark;
+    localStorage.setItem(key, isDark ? '1' : '0');
+    apply(isDark);
+  });
 })();
 </script>
 {% endif %}
