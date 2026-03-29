@@ -1,5 +1,5 @@
 ---
-title: "Agent 导论"
+title: "AGENT 导论"
 date: 2026-03-21
 description: "以 LLM 为核心的自治系统：从概念、架构到 Claude Code、OpenClaw、Codex 的技术一览。"
 ---
