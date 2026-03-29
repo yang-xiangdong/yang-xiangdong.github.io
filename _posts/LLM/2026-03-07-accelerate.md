@@ -11,13 +11,13 @@ description: "这份文档梳理了大模型从训练到推理的主要加速技
 自 2017 年 Transformer 架构（*Attention Is All You Need*）提出以来，语言模型的参数量以每年约 **10 倍**的速度增长，训练所需算力的增速更快。
 
 ```
-参数量 (B)    训练算力 (PetaFLOP-days)    GPU 数量(A100)
-──────────    ─────────────────────────    ─────────────
-GPT-2   0.117              21                   1
-GPT-3    175             3640               ~1,000
-PaLM     540            29232                6,144
-LLaMA-3  405              ---                2,048
-GPT-4  ~1800 (est.)        ?               ~20,000+
+模型            参数量 (B)     训练算力 (PetaFLOP-days)     GPU 数量(A100)
+──────────────────────────────────────────────────────────────────────────
+GPT-2            0.117              21                       1
+GPT-3            175                3640                     1000
+PaLM             540                29232                    6144
+LLaMA-3          405                ---                      2048
+GPT-4            1800 (est.)        ?                        20000+
 ```
 
 ### 0.2  三大核心挑战
@@ -35,15 +35,15 @@ GPT-4  ~1800 (est.)        ?               ~20,000+
 ### 0.3  技术发展时间线
 
 ```
-2016  ── Ring All-Reduce (Baidu)
-2017  ── 数据并行 DDP / Horovod
-2018  ── 朴素模型并行 (GPipe / PipeDream)
-2019  ── Megatron-LM 张量并行 (NVIDIA)
-2020  ── ZeRO-1/2/3 (DeepSpeed, Microsoft)
-2021  ── 流水线并行优化 / 序列并行萌芽
-2022  ── ZeRO++ / MoE 规模化 / FlashAttention-1
-2023  ── FlashAttention-2 / AWQ / GPTQ / PagedAttention (vLLM)
-2024  ── FlashAttention-3 / FP8 训练 / 推测解码普及
+2016 : Ring All-Reduce (Baidu)
+2017 : 数据并行 DDP / Horovod
+2018 : 朴素模型并行 (GPipe / PipeDream)
+2019 : Megatron-LM 张量并行 (NVIDIA)
+2020 : ZeRO-1/2/3 (DeepSpeed, Microsoft)
+2021 : 流水线并行优化 / 序列并行萌芽
+2022 : ZeRO++ / MoE 规模化 / FlashAttention-1
+2023 : FlashAttention-2 / AWQ / GPTQ / PagedAttention (vLLM)
+2024 : FlashAttention-3 / FP8 训练 / 推测解码普及
 ```
 
 ---
@@ -61,7 +61,7 @@ GPT-4  ~1800 (est.)        ?               ~20,000+
                    |
         ┌──────────┼──────────┐
         │          │          │
-      GPU-0      GPU-1      GPU-2      <-- 每个 GPU 持有完整模型副本
+      GPU-0      GPU-1      GPU-2      <-- 每个 GPU 持有完整模型副本，但是训练数据不同
     micro-b0   micro-b1   micro-b2
         │          │          │
         └─────────>│<─────────┘
@@ -73,27 +73,63 @@ GPT-4  ~1800 (est.)        ?               ~20,000+
 
 ### 1.2  Ring All-Reduce ★
 
-Baidu 2017 年提出的 Ring All-Reduce 是现代数据并行的通信基础，将 All-Reduce 的通信量从 O(N²) 降至 O(2(N-1)/N × 数据量)，接近最优。
+Baidu 2017 年提出的 Ring All-Reduce 是现代数据并行的通信基础，将 All-Reduce 的通信量从 $O(N^2)$ 降至 $O(2 \cdot (N-1) \cdot \frac{\vert g \vert}{N})$，其中 $N$ 表示 GPU 数量，$\vert g \vert$ 表示完整梯度向量的维度，梯度向量会被切分为 $\frac{\vert g \vert}{N}$ 个 Chunk。通信效率在 $\lim_{N \rightarrow +\infty}$ 时达到最优。
 
 ```
-  Ring All-Reduce 两阶段示意（4 GPU，梯度向量 g 被分为 4 段）
+Ring All-Reduce 两阶段示意（N = 3 GPU，梯度向量被切成 4 个 chunk：A, B, C, D）
 
-  === Scatter-Reduce 阶段（每个 GPU 发送自己的梯度段给下一个）===
+// Step 0. 初始阶段
 
-  GPU0 ──g[0]──> GPU1
-  GPU1 ──g[1]──> GPU2          经过 N-1 轮后
-  GPU2 ──g[2]──> GPU3          每个 GPU 持有一段完整规约结果
-  GPU3 ──g[3]──> GPU0
+    GPU0: [A0, B0, C0, D0]
+    GPU1: [A1, B1, C1, D1]
+    GPU2: [A2, B2, C2, D2]
+    GPU3: [A3, B3, C3, D3]
 
-  === All-Gather 阶段（广播完整段给所有 GPU）===
+    >> 预期每个 GPU 都持有完整的梯度信息 [A0+A1+A2+A3, B0+B1+B2+B3, C0+C1+C2+C3, D0+D1+D2+D3]
 
-  GPU0 ──G[0]──> GPU1
-  GPU1 ──G[1]──> GPU2          经过 N-1 轮后
-  GPU2 ──G[2]──> GPU3          所有 GPU 持有完整梯度
-  GPU3 ──G[3]──> GPU0
+// Step 1. Scatter-Reduce 阶段（每个 GPU 发送自己的梯度段给下一个）
 
-  通信量：每张 GPU 发送/接收各 2 × (N-1)/N × |g| 数据
-  带宽利用率接近 100%（与 GPU 数量无关）
+    // Round 1
+    GPU0 → GPU1 : A0 => GPU1: A1+A0
+    GPU1 → GPU2 : B1 => GPU2: B2+B1
+    GPU2 → GPU3 : C2 => GPU3: C3+C2
+    GPU3 → GPU0 : D3 => GPU0: D0+D3
+
+    // Round 2
+    GPU0 → GPU1 : D0+D3 => GPU1: D1+D0+D3
+    GPU1 → GPU2 : A0+A1 => GPU2: A2+A0+A1
+    GPU2 → GPU3 : B1+B2 => GPU3: B3+B1+B2
+    GPU3 → GPU0 : C2+C3 => GPU0: C0+C2+C3
+
+    // Round 3
+    GPU0 → GPU1 : C0+C2+C3 => GPU1: C1+C0+C2+C3
+    GPU1 → GPU2 : D0+D1+D3 => GPU2: D2+D0+D1+D3
+    GPU2 → GPU3 : A0+A1+A2 => GPU3: A3+A0+A1+A2
+    GPU3 → GPU0 : B1+B2+B3 => GPU0: B0+B1+B2+B3
+
+    >> 经过 N-1 轮后，每个 GPU 有且仅有一个梯度 Chunk 的完整信息。
+
+// Step 2. All-Gather 阶段（广播完整段给所有 GPU）
+
+    // Round 1
+    GPU0 → GPU1 : B
+    GPU1 → GPU2 : C
+    GPU2 → GPU3 : D
+    GPU3 → GPU0 : A
+
+    // Round 2
+    GPU0 → GPU1 : A
+    GPU1 → GPU2 : B
+    GPU2 → GPU3 : C
+    GPU3 → GPU0 : D
+
+    // Round 3
+    GPU0 → GPU1 : D
+    GPU1 → GPU2 : A
+    GPU2 → GPU3 : B
+    GPU3 → GPU0 : C
+
+    >> 经过 N-1 轮后，每个 GPU 都持有了完整的梯度信息。
 ```
 
 ### 1.3  PyTorch DDP 实现
@@ -173,7 +209,7 @@ for i, batch in enumerate(dataloader):
   Layer 0-5   Layer 6-11  Layer 12-17  Layer 18-23
   ┌────────┐  ┌────────┐  ┌────────┐   ┌────────┐
   │ GPU-0  │─>│ GPU-1  │─>│ GPU-2  │──>│ GPU-3  │
-  │(前向)  │  │(前向)  │  │(前向)  │   │(前向)  │
+  │(前向)  │   │(前向)  │  │(前向)  │   │(前向)  │
   └────────┘  └────────┘  └────────┘   └────────┘
        ↑            ↑           ↑            ↑
   (反向传播方向：梯度从 GPU-3 反向传回 GPU-0)
@@ -239,10 +275,10 @@ Transformer 中最核心的算子是线性层 `Y = XA`，Megatron-LM 提出了�
 
   结果：Y = [Y1 | Y2]  （沿列拼接）
 
-  ┌──────────┐        ┌────────┐   ┌────────┐
-  │    X     │──────>│ X · A1 │   │ X · A2 │
-  │(broadcast)       │  GPU-0 │   │  GPU-1 │
-  └──────────┘        └────────┘   └────────┘
+  ┌───────────┐         ┌────────┐   ┌────────┐
+  │    X      │ ──────> │ X · A1 │   │ X · A2 │
+  │(broadcast)│         │  GPU-0 │   │  GPU-1 │
+  └───────────┘         └────────┘   └────────┘
   通信：需要在输入端 All-Gather（或 broadcast）X
 ```
 
@@ -260,9 +296,9 @@ Transformer 中最核心的算子是线性层 `Y = XA`，Megatron-LM 提出了�
   结果：Y = Y_partial_0 + Y_partial_1  （需要 All-Reduce）
 
   ┌────┐        ┌──────────┐
-  │ X1 │──────>│ X1 · A1  │──┐
+  │ X1 │──────> │ X1 · A1  │──┐
   │GPU0│        └──────────┘  ├─ All-Reduce ──> Y
-  │ X2 │──────>│ X2 · A2  │──┘
+  │ X2 │──────> │ X2 · A2  │──┘
   │GPU1│        └──────────┘
   └────┘
 ```
@@ -273,22 +309,22 @@ MLP 层结构：`Y = GeLU(XA) · B`，Megatron-LM 将其组合为"列切分 + �
 
 ```
   ┌─────────────────────────────────────────────────────┐
-  │                   MLP 张量并行                        │
-  │                                                      │
-  │  输入 X            第一个线性层（列切分）              │
-  │  ┌───┐  f        ┌──────┐   ┌──────┐               │
-  │  │   │──────────>│ XA1  │   │ XA2  │   (GeLU)      │
-  │  │ X │  (all-   │ GPU0 │   │ GPU1 │               │
-  │  │   │  gather) └──────┘   └──────┘               │
+  │                   MLP 张量并行                       │
+  │                                                     │
+  │  输入 X            第一个线性层（列切分）             │
+  │  ┌───┐  f        ┌──────┐   ┌──────┐                │
+  │  │   │──────────>│ XA1  │   │ XA2  │   (GeLU)       │
+  │  │ X │  (all-    │ GPU0 │   │ GPU1 │                │
+  │  │   │  gather)  └──────┘   └──────┘                │
   │  └───┘                                              │
   │                  第二个线性层（行切分）               │
-  │            ┌──────────┐   ┌──────────┐             │
-  │            │Y1·B1 GPU0│   │Y2·B2 GPU1│             │
-  │            └────┬─────┘   └─────┬────┘             │
+  │            ┌──────────┐   ┌──────────┐              │
+  │            │Y1·B1 GPU0│   │Y2·B2 GPU1│              │
+  │            └────┬─────┘   └─────┬────┘              │
   │                 └───── g ───────┘                   │
   │                    (All-Reduce)                     │
   │                       │                             │
-  │                    输出 Z                            │
+  │                    输出 Z                           │
   └─────────────────────────────────────────────────────┘
 
   注：f = 前向 identity / 反向 All-Reduce
@@ -373,10 +409,10 @@ class TensorParallelMLP(nn.Module):
   GPipe 流水线（4 GPU，4 micro-batch）
 
   时间步  t1      t2      t3      t4      t5      t6      t7
-  GPU-0  [F,m1] [F,m2] [F,m3] [F,m4]                [B,m4][B,m3][B,m2][B,m1]
-  GPU-1         [F,m1] [F,m2] [F,m3] [F,m4]          [B,m4]...
-  GPU-2                [F,m1] [F,m2] [F,m3] [F,m4]   [B,m4]...
-  GPU-3                       [F,m1] [F,m2] [F,m3] [F,m4][B,m4]...
+  GPU-0  [F,m1] [F,m2] [F,m3]  [F,m4]                    [B,m4][B,m3][B,m2][B,m1]
+  GPU-1         [F,m1] [F,m2]  [F,m3]   [F,m4]           [B,m4]...
+  GPU-2                [F,m1]  [F,m2]   [F,m3]  [F,m4]   [B,m4]...
+  GPU-3                        [F,m1]   [F,m2]  [F,m3]   [F,m4][B,m4]...
 
   F = 前向，B = 反向，m_i = 第 i 个 micro-batch
 
@@ -396,9 +432,9 @@ PipeDream 提出 **1F1B 调度策略**（One Forward One Backward），让前向
 
   稳定阶段（Steady State）：
   GPU-0  [F1][F2][F3][F4][B1][F5][B2][F6][B3][F7][B4][F8][B5][B6][B7][B8]
-  GPU-1       [F1][F2][F3][F4][B1][F5][B2][F6][B3][F7][B4][F8][B5][B6][B7][B8]
-  GPU-2            [F1][F2][F3][F4][B1]...
-  GPU-3                 [F1][F2][F3][F4][B1]...
+  GPU-1      [F1][F2][F3][F4][B1][F5][B2][F6][B3][F7][B4][F8][B5][B6][B7][B8]
+  GPU-2          [F1][F2][F3][F4][B1]...
+  GPU-3              [F1][F2][F3][F4][B1]...
 
   优点：峰值激活值从 O(m) 降至 O(p)（只需保存 in-flight 的 micro-batch）
   缺点：权重更新略有延迟（Weight Stashing 问题）
@@ -454,8 +490,7 @@ Megatron-LM 进一步提出**交错式流水线**，让每个 GPU 持有多个�
   ≈ B × L × H × (34 + 5 × A × L / H)
 
   其中 B=批大小, L=序列长, H=隐层维度, A=注意力头数
-  L=32768, H=4096, A=32, B=1 时：
-  ≈ 32768 × 4096 × (34 + 5×32×32768/4096) ≈ ~200 GB/层
+  L=32768, H=4096, A=32, B=1 时，≈ 32768 × 4096 × (34 + 5×32×32768/4096) ≈ ~200 GB/层
 ```
 
 ### 5.2  Megatron-LM 序列并行
@@ -534,26 +569,26 @@ DeepSpeed ZeRO 的核心思想：**消除数据并行中的冗余存储**，将�
   ZeRO 三个阶段的显存对比
 
   ┌──────────────────────────────────────────────────────┐
-  │  数据并行（普通）：每张 GPU 存储全量 16 bytes/param   │
-  │  GPU-0: [Param][Grad][OS]  完整副本                  │
-  │  GPU-1: [Param][Grad][OS]  完整副本（冗余！）         │
-  │  GPU-N: [Param][Grad][OS]  完整副本（冗余！）         │
+  │  数据并行（普通）：每张 GPU 存储全量 16 bytes/param     │
+  │  GPU-0: [Param][Grad][OS]  完整副本                   │
+  │  GPU-1: [Param][Grad][OS]  完整副本（冗余！）          │
+  │  GPU-N: [Param][Grad][OS]  完整副本（冗余！）          │
   ├──────────────────────────────────────────────────────┤
-  │  ZeRO-1：分片优化器状态（OS）                        │
-  │  GPU-0: [Param][Grad][OS shard 0]                   │
-  │  GPU-1: [Param][Grad][OS shard 1]                   │
-  │  节省：优化器状态 (4+4+4=12 bytes) 按 N 分片        │
-  │  每 GPU：2+2+12/N bytes ≈ 4+12/N                   │
+  │  ZeRO-1：分片优化器状态（OS）                          │
+  │  GPU-0: [Param][Grad][OS shard 0]                    │
+  │  GPU-1: [Param][Grad][OS shard 1]                    │
+  │  节省：优化器状态 (4+4+4=12 bytes) 按 N 分片           │
+  │  每 GPU：2+2+12/N bytes ≈ 4+12/N                     │
   ├──────────────────────────────────────────────────────┤
-  │  ZeRO-2：分片优化器状态 + 梯度（Grad）               │
-  │  GPU-0: [Param][Grad shard 0][OS shard 0]           │
-  │  GPU-1: [Param][Grad shard 1][OS shard 1]           │
-  │  每 GPU：2+(2+12)/N bytes ≈ 2+14/N                 │
+  │  ZeRO-2：分片优化器状态 + 梯度（Grad）                 │
+  │  GPU-0: [Param][Grad shard 0][OS shard 0]            │
+  │  GPU-1: [Param][Grad shard 1][OS shard 1]            │
+  │  每 GPU：2+(2+12)/N bytes ≈ 2+14/N                   │
   ├──────────────────────────────────────────────────────┤
-  │  ZeRO-3：分片参数 + 梯度 + 优化器状态（全量分片）    │
-  │  GPU-0: [Param shard 0][Grad shard 0][OS shard 0]   │
-  │  GPU-1: [Param shard 1][Grad shard 1][OS shard 1]   │
-  │  每 GPU：16/N bytes → 理论上可无限扩展              │
+  │  ZeRO-3：分片参数 + 梯度 + 优化器状态（全量分片）       │
+  │  GPU-0: [Param shard 0][Grad shard 0][OS shard 0]    │
+  │  GPU-1: [Param shard 1][Grad shard 1][OS shard 1]    │
+  │  每 GPU：16/N bytes → 理论上可无限扩展                 │
   └──────────────────────────────────────────────────────┘
 ```
 
@@ -622,19 +657,19 @@ model_engine, optimizer, _, _ = deepspeed.initialize(
 
   拓扑结构：
   ┌─────────────── 数据并行（DP=2，两个完整模型副本）──────────────┐
-  │                                                               │
+  │                                                             │
   │  ┌──────── 流水线并行（PP=4，4 级流水线）────────┐            │
-  │  │  ┌──张量并行（TP=8，8 GPU 共享同一层)──┐     │            │
+  │  │  ┌──张量并行（TP=8，8 GPU 共享同一层)──┐      │            │
   │  │  │  GPU0  GPU1  GPU2 ... GPU7         │     │            │
-  │  │  └──────────────────────────────────── ┘     │            │
-  │  │  ┌────────────────────────────────────┐      │            │
-  │  │  │  GPU8  GPU9 ... GPU15              │      │            │
-  │  │  └────────────────────────────────────┘      │            │
-  │  │  ...（共 4 级，每级 8 个 GPU）                │            │
-  │  └────────────────────────────────────────────── ┘            │
-  │                                                               │
+  │  │  └──────────────────────────────────── ┘    │            │
+  │  │  ┌────────────────────────────────────┐     │            │
+  │  │  │  GPU8  GPU9 ... GPU15              │     │            │
+  │  │  └────────────────────────────────────┘     │            │
+  │  │  ...（共 4 级，每级 8 个 GPU）                │           │
+  │  └─────────────────────────────────────────────┘            │
+  │                                                             │
   │  + 另一个相同的 DP 副本（GPU 32-63）                          │
-  └───────────────────────────────────────────────────────────────┘
+  └─────────────────────────────────────────────────────────────┘
 
   通信层次：
     TP All-Reduce  → NVLink（同节点内，带宽 ~600 GB/s）
@@ -677,7 +712,7 @@ MoE 是一种**稀疏激活**的模型架构，打破了"参数量 = 计算量"�
          │ top-k 选择（例如 k=2）
          │
   ┌──────┴──────────────────────────────────┐
-  │  Expert 1  Expert 2  Expert 3  Expert E  │
+  │  Expert 1  Expert 2  Expert 3  Expert E │
   │  FFN_1     FFN_2     FFN_3    FFN_E     │
   └──────┬──────────────────────────────────┘
          │ 加权求和（按 router 分数）
