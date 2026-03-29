@@ -1,13 +1,19 @@
 ---
 layout: archive
-title: ""
+title: "CV"
 permalink: /cv/
-author_profile: true
+author_profile: false
 redirect_from:
   - /resume
 ---
 
 {% include base_path %}
+
+<div class="cv-download-section">
+  <a href="{{ '/files/cv.pdf' | relative_url }}" class="cv-download-btn" download>
+    <i class="fas fa-download"></i> Download CV (PDF)
+  </a>
+</div>
 
 Education
 ======
@@ -23,7 +29,7 @@ Work experience
 * 2025 - Now: Baidu, Beijing
   * Software Engineer
   * Operations Platform Service of Cloud Computing
-  
+
 Skills
 ======
 * Java, Python, Golang, Pytorch

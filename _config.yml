@@ -24,9 +24,9 @@ author:
   avatar           : "profile_01.jpg"
   name             : "Yang Xiangdong"
   pronouns         : ""
-  bio              : "Coding ..."
+  bio              : ""
   location         : "Beijing, China"
-  employer         : "Baidu"
+  employer         :
   uri              : # URL
   email            : "yangxiangdong.cs@gmail.com" 
 
@@ -232,7 +232,7 @@ defaults:
       type: pages
     values:
       layout: single
-      author_profile: true
+      author_profile: false
   # _teaching
   - scope:
       path: ""

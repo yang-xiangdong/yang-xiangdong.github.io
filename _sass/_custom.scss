@@ -1,0 +1,343 @@
+/* ==========================================================================
+   Custom Styles
+   ========================================================================== */
+
+/* Publications Timeline */
+.pub-timeline {
+  position: relative;
+  padding-left: 2.5em;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0.5em;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: $border-color;
+  }
+}
+
+.pub-year {
+  position: relative;
+  margin: 1em 0 1.2em;
+  padding-bottom: 0.5em;
+  font-size: 1.2em;
+  font-weight: 700;
+  color: $text-color;
+  border-bottom: 1px solid $border-color;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: -2.1em;
+    top: 0.3em;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: $primary-color;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px $primary-color;
+  }
+}
+
+.pub-item {
+  position: relative;
+  margin-bottom: 2em;
+  padding: 1.2em 1.5em;
+  background: #fafbfc;
+  border: 1px solid $border-color;
+  border-radius: 6px;
+  transition: box-shadow 0.2s ease;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: -2.15em;
+    top: 1.6em;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid $primary-color;
+  }
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.pub-badge {
+  display: inline-block;
+  padding: 0.15em 0.6em;
+  font-size: 0.7em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 3px;
+  margin-right: 0.5em;
+  vertical-align: middle;
+
+  &.journal {
+    background: #e8f4f8;
+    color: #2980b9;
+  }
+
+  &.conference {
+    background: #fef9e7;
+    color: #b7950b;
+  }
+
+  &.preprint {
+    background: #f0f0f0;
+    color: #666;
+  }
+}
+
+.pub-venue {
+  display: inline;
+  font-size: 0.85em;
+  color: $gray;
+  font-style: italic;
+}
+
+.pub-title {
+  margin: 0.5em 0 0.3em;
+  font-size: 1.05em;
+  font-weight: 600;
+  color: $text-color;
+  line-height: 1.4;
+}
+
+.pub-authors {
+  margin: 0;
+  font-size: 0.85em;
+  color: $gray;
+  line-height: 1.5;
+}
+
+/* Blog Archive Tree */
+.blog-archive-tree {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.blog-empty-note {
+  color: $gray;
+  font-style: italic;
+}
+
+.blog-archive-year {
+  margin-bottom: 1.5em;
+
+  .year-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5em;
+    padding-bottom: 0.4em;
+    border-bottom: 1px solid $border-color;
+
+    i {
+      margin-right: 0.5em;
+      color: $primary-color;
+    }
+
+    span {
+      font-weight: 700;
+      font-size: 1.1em;
+    }
+
+    .post-count {
+      margin-left: auto;
+      font-size: 0.8em;
+      color: $gray;
+      font-weight: 400;
+    }
+  }
+}
+
+.blog-archive-month {
+  margin-left: 1.5em;
+  margin-bottom: 0.8em;
+
+  .month-header {
+    font-weight: 600;
+    font-size: 0.9em;
+    color: $gray;
+    margin-bottom: 0.3em;
+
+    i {
+      margin-right: 0.4em;
+      font-size: 0.8em;
+    }
+  }
+
+  .post-list {
+    list-style: none;
+    padding-left: 1em;
+    margin: 0;
+
+    li {
+      padding: 0.3em 0;
+      border-bottom: 1px dotted $border-color;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      a {
+        color: $link-color;
+        text-decoration: none;
+        font-size: 0.9em;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+
+      .post-date-inline {
+        margin-left: 0.5em;
+        font-size: 0.8em;
+        color: mix(#fff, $gray, 30%);
+      }
+    }
+  }
+}
+
+/* Blog content with right sidebar TOC */
+.blog-with-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2em;
+}
+
+.blog-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.blog-toc-sidebar {
+  flex: 0 0 220px;
+  position: sticky;
+  top: calc(#{$masthead-height} + 2em);
+  align-self: flex-start;
+  max-height: calc(100vh - #{$masthead-height} - 4em);
+  overflow-y: auto;
+
+  @media screen and (max-width: 1023px) {
+    display: none;
+  }
+
+  h4 {
+    margin: 0 0 0.5em;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: $gray;
+  }
+
+  .toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+
+    li {
+      a {
+        display: block;
+        padding: 0.3em 0;
+        font-size: 0.8em;
+        color: $gray;
+        text-decoration: none;
+        border-bottom: 1px dotted $border-color;
+
+        &:hover {
+          color: $text-color;
+        }
+      }
+
+      ul {
+        list-style: none;
+        padding-left: 1em;
+      }
+    }
+  }
+}
+
+/* CV Download Button */
+.cv-download-section {
+  margin-top: 2em;
+  margin-bottom: 2em;
+  padding: 1.5em;
+  text-align: center;
+  background: #fafbfc;
+  border: 1px solid $border-color;
+  border-radius: 6px;
+}
+
+.cv-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.7em 1.8em;
+  font-size: 0.95em;
+  font-weight: 600;
+  color: #fff;
+  background: $primary-color;
+  border: none;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: $masthead-link-color-hover;
+    color: #fff;
+  }
+
+  i {
+    font-size: 1.1em;
+  }
+}
+
+/* Full-width content when no sidebar is present */
+.archive {
+  &.no-sidebar {
+    @include breakpoint($large) {
+      @include span(12 of 12);
+      @include prefix(0 of 12);
+    }
+  }
+}
+
+.page.no-sidebar {
+  @include breakpoint($large) {
+    @include span(12 of 12);
+    @include prefix(0 of 12);
+    @include suffix(0 of 12);
+  }
+}
+
+/* Smooth page transitions */
+.masthead a {
+  transition: color 0.15s ease;
+}
+
+/* Improve heading typography */
+.page__title {
+  letter-spacing: -0.01em;
+}
+
+.page__content {
+  h2 {
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    font-size: 1.1em;
+  }
+}
+
+/* Subtle footer improvement */
+.page__footer {
+  margin-top: 3em;
+}

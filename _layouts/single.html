@@ -17,7 +17,7 @@ layout: default
 <div id="main" role="main">
   {% include sidebar.html %}
 
-  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+  <article class="page{% unless page.author_profile or layout.author_profile %} no-sidebar{% endunless %}" itemscope itemtype="http://schema.org/CreativeWork">
     {% if page.title %}<meta itemprop="headline" content="{{ page.title | markdownify | strip_html | strip_newlines | escape_once }}">{% endif %}
     {% if page.excerpt %}<meta itemprop="description" content="{{ page.excerpt | markdownify | strip_html | strip_newlines | escape_once }}">{% endif %}
     {% if page.date %}<meta itemprop="datePublished" content="{{ page.date | date: "%B %d, %Y" }}">{% endif %}
@@ -33,28 +33,50 @@ layout: default
         {% if page.modified %}
           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> {{ site.data.ui-text[site.locale].date_label | default: "Published:" }}</strong> <time datetime="{{ page.modified | date: "%Y-%m-%d" }}">{{ page.modified | date: "%B %d, %Y" }}</time></p>
         {% endif %}
-        
+
         {% if page.collection == 'teaching' %}
           <p> {{ page.type }}, <i>{{ page.venue }}</i>, {{ page.date | default: "1900-01-01" | date: "%Y" }} </p>
         {% elsif page.venue and page.date %}
           <p>Published in <i>{{ page.venue }}</i>, {{ page.date | default: "1900-01-01" | date: "%Y" }} </p>
         {% elsif page.date %}
           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> {{ site.data.ui-text[site.locale].date_label | default: "Published:" }}</strong> <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | default: "1900-01-01" | date: "%B %d, %Y" }}</time></p>
-        {% endif %}    
+        {% endif %}
         </header>
       {% endunless %}
 
-      <section class="page__content" itemprop="text">
-        {{ content }}
+      {% if page.collection == 'posts' %}
+        <div class="blog-with-toc">
+          <div class="blog-main">
+            <section class="page__content" itemprop="text">
+              {{ content }}
 
-        {% if page.citation and page.paperurl %}
-          <p style="font-size: smaller">Recommended citation: {{ page.citation }} <a href="{{ page.paperurl }}"><u>{{ page.paperurl }}</u></a></p>
-        {% elsif page.citation %}
-          <p style="font-size: smaller">Recommended citation: {{ page.citation }} </p>
-        {% endif %}
+              {% if page.citation and page.paperurl %}
+                <p style="font-size: smaller">Recommended citation: {{ page.citation }} <a href="{{ page.paperurl }}"><u>{{ page.paperurl }}</u></a></p>
+              {% elsif page.citation %}
+                <p style="font-size: smaller">Recommended citation: {{ page.citation }} </p>
+              {% endif %}
 
-        {% if page.link %}<div><a href="{{ page.link }}" class="btn">{{ site.data.ui-text[site.locale].ext_link_label | default: "Direct Link" }}</a></div>{% endif %}
-      </section>
+              {% if page.link %}<div><a href="{{ page.link }}" class="btn">{{ site.data.ui-text[site.locale].ext_link_label | default: "Direct Link" }}</a></div>{% endif %}
+            </section>
+          </div>
+          <div class="blog-toc-sidebar" id="js-toc-sidebar">
+            <h4><i class="fa fa-list"></i> Contents</h4>
+            <div class="toc-list" id="js-toc-list"></div>
+          </div>
+        </div>
+      {% else %}
+        <section class="page__content" itemprop="text">
+          {{ content }}
+
+          {% if page.citation and page.paperurl %}
+            <p style="font-size: smaller">Recommended citation: {{ page.citation }} <a href="{{ page.paperurl }}"><u>{{ page.paperurl }}</u></a></p>
+          {% elsif page.citation %}
+            <p style="font-size: smaller">Recommended citation: {{ page.citation }} </p>
+          {% endif %}
+
+          {% if page.link %}<div><a href="{{ page.link }}" class="btn">{{ site.data.ui-text[site.locale].ext_link_label | default: "Direct Link" }}</a></div>{% endif %}
+        </section>
+      {% endif %}
 
       <footer class="page__meta">
         {% if site.data.ui-text[site.locale].meta_label %}
@@ -87,3 +109,54 @@ layout: default
     </div>
   {% endif %}
 </div>
+
+{% if page.collection == 'posts' %}
+<script>
+(function() {
+  var content = document.querySelector('.page__content');
+  var tocList = document.getElementById('js-toc-list');
+  if (!content || !tocList) return;
+
+  var headings = content.querySelectorAll('h2, h3');
+  if (headings.length === 0) {
+    var sidebar = document.getElementById('js-toc-sidebar');
+    if (sidebar) sidebar.style.display = 'none';
+    return;
+  }
+
+  // Assign IDs if missing
+  headings.forEach(function(h, i) {
+    if (!h.id) {
+      h.id = 'section-' + i;
+    }
+  });
+
+  var currentLevel = 0;
+  var stack = [document.createElement('ul')];
+  tocList.appendChild(stack[0]);
+
+  headings.forEach(function(h) {
+    var level = parseInt(h.tagName.charAt(1), 10);
+    var li = document.createElement('li');
+    var a = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    li.appendChild(a);
+
+    while (level < currentLevel) {
+      stack.pop();
+      currentLevel--;
+    }
+
+    if (level > currentLevel) {
+      var ul = document.createElement('ul');
+      stack[stack.length - 1].lastChild.appendChild(ul);
+      stack.push(ul);
+      currentLevel = level;
+    }
+
+    stack[stack.length - 1].appendChild(li);
+  });
+})();
+</script>
+{% endif %}

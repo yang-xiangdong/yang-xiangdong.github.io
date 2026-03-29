@@ -1,19 +1,46 @@
 ---
 layout: archive
 permalink: /year-archive/
-title: ""
-author_profile: true
+title: "Blog Posts"
+author_profile: false
 redirect_from:
   - /wordpress/blog-posts/
 ---
 
 {% include base_path %}
-{% capture written_year %}'None'{% endcapture %}
-{% for post in site.posts %}
-  {% capture year %}{{ post.date | date: '%Y' }}{% endcapture %}
-  {% if year != written_year %}
-    <h2 id="{{ year | slugify }}" class="archive__subtitle">{{ year }}</h2>
-    {% capture written_year %}{{ year }}{% endcapture %}
-  {% endif %}
-  {% include archive-single.html %}
-{% endfor %}
+
+<div class="blog-archive-tree">
+  {% assign posts_by_year = site.posts | group_by_exp: "post", "post.date | date: '%Y'" %}
+  {% for year_group in posts_by_year %}
+    {% if year_group.name != '2199' %}
+      <div class="blog-archive-year">
+        <div class="year-header">
+          <i class="fas fa-calendar-alt"></i>
+          <span>{{ year_group.name }}</span>
+          <span class="post-count">{{ year_group.items.size }} posts</span>
+        </div>
+
+        {% assign posts_by_month = year_group.items | group_by_exp: "post", "post.date | date: '%B'" %}
+        {% for month_group in posts_by_month %}
+          <div class="blog-archive-month">
+            <div class="month-header">
+              <i class="fas fa-folder"></i> {{ month_group.name }}
+            </div>
+            <ul class="post-list">
+              {% for post in month_group.items %}
+                <li>
+                  <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+                  <span class="post-date-inline">{{ post.date | date: "%b %d" }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>
+
+{% if site.posts.size == 0 %}
+  <p class="blog-empty-note">No blog posts yet. Check back soon!</p>
+{% endif %}
