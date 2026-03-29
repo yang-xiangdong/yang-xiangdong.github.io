@@ -312,6 +312,46 @@
 }
 
 /* ==========================================================================
+   Post Meta Bar & Page View Stats
+   ========================================================================== */
+.post-meta-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.2em;
+  font-size: 0.82em;
+  color: #9ba3b0;
+  margin-top: 0.3em;
+
+  .post-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+
+    i {
+      font-size: 0.9em;
+      opacity: 0.6;
+    }
+  }
+}
+
+.site-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  font-size: 0.75em;
+  color: #b0b8c8;
+  margin-top: 2em;
+  padding-top: 1.2em;
+  border-top: 1px solid #eef0f3;
+
+  i {
+    margin-right: 0.25em;
+    opacity: 0.6;
+  }
+}
+
+/* ==========================================================================
    Post Detail Page Layout
    ========================================================================== */
 
@@ -966,5 +1006,14 @@ body.dark-mode {
     border-color: #3a3a54;
     color: #a0a8b4;
     &:hover { color: #e0e4ea; }
+  }
+
+  .post-meta-bar {
+    color: #6b7580;
+  }
+
+  .site-stats {
+    color: #6b7580;
+    border-top-color: #2a2a44;
   }
 }
