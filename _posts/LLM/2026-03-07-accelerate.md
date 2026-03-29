@@ -132,54 +132,17 @@ Ring All-Reduce 两阶段示意（N = 3 GPU，梯度向量被切成 4 个 chunk�
     >> 经过 N-1 轮后，每个 GPU 都持有了完整的梯度信息。
 ```
 
-### 1.3  PyTorch DDP 实现
+### 1.3  DDP 特点
 
-```python
-import torch
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
+#### 优点
 
-# 初始化进程组（NCCL 后端适用于 GPU）
-dist.init_process_group(backend='nccl')
-local_rank = int(os.environ["LOCAL_RANK"])
-torch.cuda.set_device(local_rank)
+1. 通信量与参数量有关，与集群规模无关。
+2. DDP 会将梯度 All-Reduce 与 backward 计算重叠执行（overlap），即某一层的梯度计算完毕后立刻开始通信，无需等待整个 backward 完成，大幅隐藏通信延迟。
+3. 当单卡显存不够放入目标 batch size 时，可以通过多次小 batch 累积梯度再更新来模拟大 batch。
 
-model = MyModel().cuda(local_rank)
-# DDP 包装：自动在 backward 后插入 All-Reduce hook
-model = DDP(model, device_ids=[local_rank])
+#### 缺点
 
-# 数据需要用 DistributedSampler 保证不同 GPU 拿到不同数据
-sampler = DistributedSampler(dataset)
-dataloader = DataLoader(dataset, sampler=sampler)
-
-for batch in dataloader:
-    optimizer.zero_grad()
-    loss = model(batch)
-    loss.backward()   # <-- 梯度 All-Reduce 在这里自动触发
-    optimizer.step()
-```
-
-> **⚙️ DDP 优化细节**：DDP 会将梯度 All-Reduce 与 backward 计算**重叠执行**（overlap），即某一层的梯度计算完毕后立刻开始通信，无需等待整个 backward 完成，大幅隐藏通信延迟。
-
-### 1.4  梯度累积（Gradient Accumulation）
-
-当单卡显存不够放入目标 batch size 时，可以通过多次小 batch 累积梯度再更新来**模拟大 batch**：
-
-```python
-accumulation_steps = 8   # 等效 batch size = 实际 batch × 8
-
-for i, batch in enumerate(dataloader):
-    loss = model(batch) / accumulation_steps
-    loss.backward()
-
-    if (i + 1) % accumulation_steps == 0:
-        optimizer.step()
-        optimizer.zero_grad()
-```
-
-### 1.5  数据并行的显存瓶颈
-
-数据并行**无法解决显存问题**：每张 GPU 仍需存储完整的：
+数据并行**无法解决显存问题**：每张 GPU 仍需存储完整的模型副本。
 
 ```
 显存占用 = 参数 + 梯度 + 优化器状态 + 激活值
@@ -187,10 +150,11 @@ for i, batch in enumerate(dataloader):
 以 7B 模型（FP16 混合精度）为例：
   参数        = 7B × 2 bytes = 14 GB
   梯度        = 7B × 2 bytes = 14 GB
-  优化器状态  = 7B × 8 bytes = 56 GB  (Adam: m, v, FP32 param)
+  Master Weights（FP32）= 7B × 4 bytes = 28 GB   ← 混合精度需要
+  优化器状态  = 7B × 8 bytes = 56 GB  (AdamW: FP32 一阶动量、FP32 二阶动量)
   激活值      ≈ batch-dependent
   ─────────────────────────────────────
-  合计        ≈ 84 GB（不含激活）
+  合计        ≈ 112 GB
 ```
 
 单张 A100 80GB 显存已接近极限，这正是模型并行技术的动机。
@@ -201,51 +165,33 @@ for i, batch in enumerate(dataloader):
 
 ### 2.1  朴素模型并行（Naive Model Parallelism）
 
-最简单的模型并行：将模型**按层**切分到不同 GPU。
+最简单的模型并行：将模型**按层**切分到不同 GPU。前向和反向传播时，GPU 需要按顺序计算自己负责的层，层之间的输入输出存在时序依赖。
 
 ```
-         单机 4 GPU 朴素模型并行示意
+             4 GPU 朴素模型并行示意
 
   Layer 0-5   Layer 6-11  Layer 12-17  Layer 18-23
   ┌────────┐  ┌────────┐  ┌────────┐   ┌────────┐
-  │ GPU-0  │─>│ GPU-1  │─>│ GPU-2  │──>│ GPU-3  │
-  │(前向)  │   │(前向)  │  │(前向)  │   │(前向)  │
+  │ GPU-0  │─>│ GPU-1  │─>│ GPU-2  │──>│ GPU-3  │  // 前向传播方向，反向传播时梯度逆向回传
   └────────┘  └────────┘  └────────┘   └────────┘
-       ↑            ↑           ↑            ↑
-  (反向传播方向：梯度从 GPU-3 反向传回 GPU-0)
-```
-
-```python
-# PyTorch 朴素模型并行示例
-class NaiveModelParallel(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.layer1 = nn.Linear(1024, 1024).to('cuda:0')
-        self.layer2 = nn.Linear(1024, 1024).to('cuda:1')
-        self.layer3 = nn.Linear(1024, 512).to('cuda:2')
-
-    def forward(self, x):
-        x = self.layer1(x.to('cuda:0'))
-        x = self.layer2(x.to('cuda:1'))   # 自动触发 GPU 间数据传输
-        x = self.layer3(x.to('cuda:2'))
-        return x
 ```
 
 ### 2.2  朴素模型并行的致命缺陷：GPU 空闲问题
 
+朴素模型并行同一时刻只有一张 GPU 在工作，利用率极低。
+前向传播时后面 GPU 的输入依赖前面的 GPU 的输出，反向传播时前面的 GPU 输入则依赖后面 GPU 的输出。
+**流水线并行**正是为解决这个问题而生（见第四章）。
+
 ```
-  时间轴 ──────────────────────────────────────────────>
+时间轴 ──────────────────────────────────────────────>
 
-  GPU-0  [前向 B1][          空闲          ][反向 B1]
-  GPU-1           [前向 B1][     空闲      ][反向 B1]
-  GPU-2                    [前向 B1][空闲  ][反向 B1]
-  GPU-3                             [前向/反向 B1]
+GPU-0  [前向] [空闲]  [空闲]  [空闲]
+GPU-1  [空闲] [前向]  [空闲]  [空闲]
+GPU-2  [空闲] [空闲]  [前向]  [空闲]
+GPU-3  [空闲] [空闲]  [空闲]  [前向]
 
-  GPU 利用率：约 25%（N=4 时为 1/N）
-  这种空闲气泡被称为 "Pipeline Bubble"
+GPU 利用率：约 25%，这种空闲气泡被称为 "Pipeline Bubble"。
 ```
-
-朴素模型并行同一时刻只有一张 GPU 在工作，利用率极低。**流水线并行**正是为解决这个问题而生（见第四章）。
 
 ---
 
