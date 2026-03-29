@@ -21,7 +21,35 @@ layout: default
     {% assign filtered_posts = filtered_posts | push: post %}
   {% endif %}
 {% endfor %}
-{% assign groups = filtered_posts | group_by_exp: "post", "post.categories[0]" %}
+
+{% comment %}<!-- Group posts by their subdirectory name under _posts/ -->{% endcomment %}
+{% assign final_groups = "" | split: "" %}
+{% for post in filtered_posts %}
+  {% assign dir = post.path | split: "/" | shift | first %}
+  {% unless dir %}
+    {% assign dir = "root" %}
+  {% endunless %}
+  {% assign found = false %}
+  {% for fg in final_groups %}
+    {% if fg.name == dir %}
+      {% assign found = true %}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+  {% unless found %}
+    {% assign posts_in_dir = "" | split: "" %}
+    {% for p in filtered_posts %}
+      {% assign pdir = p.path | split: "/" | shift | first %}
+      {% unless pdir %}{% assign pdir = "root" %}{% endunless %}
+      {% if pdir == dir %}
+        {% assign posts_in_dir = posts_in_dir | push: p %}
+      {% endif %}
+    {% endfor %}
+    {% assign group_item = "" | split: "" %}
+    {% assign group_item = group_item | push: dir | push: posts_in_dir %}
+    {% assign final_groups = final_groups | push: group_item %}
+  {% endunless %}
+{% endfor %}
 
 <div id="main" role="main">
   {% comment %}<!-- Only show author sidebar on non-post pages -->{% endcomment %}
@@ -62,25 +90,27 @@ layout: default
 
           {% comment %}<!-- Left sidebar: posts directory tree -->{% endcomment %}
           <div class="post-sidebar-left" id="js-sidebar-left">
-            <div class="sidebar-toggle-btn sidebar-toggle-left" id="js-toggle-left" title="Toggle sidebar">
+            <div class="sidebar-toggle-btn sidebar-toggle-left" id="js-toggle-left" title="Toggle posts sidebar">
               <i class="fas fa-chevron-left"></i>
             </div>
             <div class="sidebar-inner">
               <h4 class="sidebar-heading"><i class="fas fa-sitemap"></i> Posts</h4>
               <nav class="posts-dir-nav">
-                {% for group in groups %}
-                  {% if group.name != "" %}
+                {% for group in final_groups %}
+                  {% assign dir_name = group[0] %}
+                  {% assign posts_in_group = group[1] %}
+                  {% unless dir_name == "root" or dir_name == "" %}
                     <div class="nav-dir-group">
-                      <div class="nav-dir-header">{{ group.name }}</div>
+                      <div class="nav-dir-header">{{ dir_name }}</div>
                       <ul class="nav-dir-posts">
-                        {% for post in group.items %}
+                        {% for post in posts_in_group %}
                           <li{% if post.url == page.url %} class="current"{% endif %}>
                             <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
                           </li>
                         {% endfor %}
                       </ul>
                     </div>
-                  {% endif %}
+                  {% endunless %}
                 {% endfor %}
               </nav>
             </div>
@@ -176,10 +206,14 @@ layout: default
   // === TOC generation ===
   var content = document.querySelector('.post-content-main .page__content');
   var tocList = document.getElementById('js-toc-list');
+  var rightSidebar = document.getElementById('js-sidebar-right');
+  var rightToggle = document.getElementById('js-toggle-right');
+
   if (content && tocList) {
     var headings = content.querySelectorAll('h2, h3');
     if (headings.length === 0) {
-      document.getElementById('js-sidebar-right').style.display = 'none';
+      rightSidebar.style.display = 'none';
+      rightToggle.style.display = 'none';
     } else {
       headings.forEach(function(h, i) {
         if (!h.id) h.id = 'section-' + i;
@@ -203,6 +237,9 @@ layout: default
         }
         stack[stack.length - 1].appendChild(li);
       });
+
+      // Show toggle button when TOC has content
+      rightToggle.style.display = 'flex';
     }
   }
 

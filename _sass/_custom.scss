@@ -116,71 +116,94 @@
   line-height: 1.5;
 }
 
-/* Posts Directory Tree */
+/* Posts Directory Tree - Modern Design */
 .posts-dir-tree {
   padding-left: 0;
+  margin: 0;
 }
 
 .dir-group {
-  margin-bottom: 1.5em;
+  margin-bottom: 2em;
+  background: #fafbfc;
+  border: 1px solid #e8ecef;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .dir-header {
   display: flex;
   align-items: center;
-  gap: 0.5em;
-  margin-bottom: 0.4em;
-  padding-bottom: 0.4em;
-  border-bottom: 1px solid $border-color;
+  gap: 0.75em;
+  padding: 1em 1.25em;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid #e8ecef;
 
   i {
-    color: $primary-color;
+    color: #5a8fbd;
+    font-size: 1.1em;
   }
 
   span:first-of-type {
     font-weight: 700;
-    font-size: 1.1em;
+    font-size: 1em;
+    color: #2c3e50;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
   }
 
   .dir-count {
     margin-left: auto;
     font-size: 0.75em;
-    color: $gray;
-    background: $lighter-gray;
-    padding: 0.1em 0.5em;
-    border-radius: 10px;
-    font-weight: 400;
+    color: #6c757d;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 0.2em 0.7em;
+    border-radius: 12px;
+    font-weight: 600;
   }
 }
 
 .dir-posts {
   list-style: none;
-  padding-left: 1.2em;
-  margin: 0.3em 0 0;
+  padding: 0;
+  margin: 0;
 
   li {
-    padding: 0.35em 0;
-    border-bottom: 1px dotted $border-color;
+    padding: 0.75em 1.25em;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    transition: background 0.15s ease;
 
     &:last-child {
       border-bottom: none;
     }
 
+    &:hover {
+      background: rgba(90, 143, 189, 0.08);
+    }
+
     .tree-icon {
-      color: $light-gray;
+      color: #adb5bd;
       font-family: $monospace;
-      margin-right: 0.3em;
-      font-size: 0.85em;
+      font-size: 0.9em;
+      flex-shrink: 0;
     }
 
     a {
-      color: $link-color;
+      color: #34495e;
       text-decoration: none;
       font-size: 0.95em;
+      line-height: 1.4;
+      flex: 1;
 
       &:hover {
-        text-decoration: underline;
+        color: #5a8fbd;
       }
+    }
+
+    &:hover .tree-icon {
+      color: #5a8fbd;
     }
   }
 }
@@ -188,6 +211,11 @@
 .blog-empty-note {
   color: $gray;
   font-style: italic;
+  text-align: center;
+  padding: 2em;
+  background: #fafbfc;
+  border-radius: 8px;
+  border: 1px dashed #e8ecef;
 }
 
 /* CV Download Button */
@@ -257,8 +285,9 @@
 
 .post-three-col {
   display: flex;
-  gap: 0;
+  gap: 2em;
   align-items: flex-start;
+  width: 100%;
 
   @media screen and (max-width: 1023px) {
     flex-wrap: wrap;
@@ -269,7 +298,7 @@
 .post-content-main {
   flex: 1 1 0;
   min-width: 0;
-  padding: 0 1.5em;
+  padding: 0 1em;
 
   @media screen and (max-width: 1023px) {
     flex: 1 1 100%;
@@ -278,40 +307,50 @@
   }
 
   .page__content {
-    max-width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+
+    p, li, dl {
+      line-height: 1.75;
+    }
   }
 }
 
 /* Shared sidebar styles */
 .post-sidebar-left,
 .post-sidebar-right {
-  flex: 0 0 210px;
+  flex: 0 0 220px;
   position: sticky;
-  top: calc(#{$masthead-height} + 1em);
+  top: calc(#{$masthead-height} + 1.5em);
   align-self: flex-start;
-  max-height: calc(100vh - #{$masthead-height} - 2em);
+  max-height: calc(100vh - #{$masthead-height} - 3em);
   overflow-y: auto;
+  padding: 1em;
+  background: #fafbfc;
+  border-radius: 8px;
+  border: 1px solid #e8ecef;
 
   @media screen and (max-width: 1023px) {
     position: static;
     max-height: none;
     overflow-y: visible;
+    flex: 1 1 100%;
   }
 
   /* Scrollbar styling */
   &::-webkit-scrollbar {
-    width: 3px;
+    width: 4px;
   }
   &::-webkit-scrollbar-track {
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: $light-gray;
-    border-radius: 3px;
+    background: #d0d0d0;
+    border-radius: 4px;
   }
 
   .sidebar-inner {
-    transition: opacity 0.15s ease, visibility 0.15s ease;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
   }
 
   &.collapsed .sidebar-inner {
@@ -322,15 +361,20 @@
   }
 
   .sidebar-heading {
-    margin: 0 0 0.6em;
-    font-size: 0.75em;
+    margin: 0 0 0.8em;
+    font-size: 0.8em;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: $gray;
+    letter-spacing: 1px;
+    color: #6c757d;
     white-space: nowrap;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
 
     i {
-      margin-right: 0.3em;
+      margin-right: 0;
+      color: #5a8fbd;
     }
   }
 }
@@ -338,24 +382,31 @@
 /* Toggle buttons */
 .sidebar-toggle-btn {
   position: absolute;
-  top: 0;
-  width: 20px;
-  height: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: $lighter-gray;
-  border: 1px solid $border-color;
-  border-radius: 3px;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 0.55em;
-  color: $gray;
+  font-size: 0.6em;
+  color: #999;
   z-index: 5;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
 
   &:hover {
-    background: $light-gray;
-    color: $text-color;
+    background: #f0f0f0;
+    color: #666;
+    border-color: #bbb;
+  }
+
+  /* Hide toggle when sidebar is collapsed */
+  .collapsed + & {
+    opacity: 0.5;
   }
 
   @media screen and (max-width: 1023px) {
@@ -364,44 +415,54 @@
 }
 
 .sidebar-toggle-left {
-  right: -10px;
+  right: -11px;
 }
 
 .sidebar-toggle-right {
-  left: -10px;
+  left: -11px;
 }
 
 /* Left sidebar: posts directory nav */
 .post-sidebar-left {
   position: relative;
-  padding-right: 12px;
+  padding-right: 1.5em;
 
   @media screen and (max-width: 1023px) {
     flex: 1 1 100%;
     order: 1;
-    padding-right: 0;
+    padding-right: 1em;
     margin-bottom: 1em;
   }
 
   &.collapsed {
     flex: 0 0 0px;
-    padding-right: 12px;
+    padding-right: 0;
     overflow: visible;
+
+    .sidebar-inner {
+      display: none;
+    }
   }
 }
 
 .posts-dir-nav {
   .nav-dir-group {
     margin-bottom: 1em;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
   }
 
   .nav-dir-header {
-    font-size: 0.8em;
+    font-size: 0.78em;
     font-weight: 700;
-    color: $text-color;
-    margin-bottom: 0.2em;
+    color: #5a8fbd;
+    margin-bottom: 0.4em;
     padding-left: 0.5em;
-    border-left: 2px solid $primary-color;
+    border-left: 2px solid #5a8fbd;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .nav-dir-posts {
@@ -412,23 +473,23 @@
     li {
       a {
         display: block;
-        padding: 0.25em 0.5em 0.25em 1em;
-        font-size: 0.78em;
-        color: $gray;
+        padding: 0.35em 0.5em 0.35em 1em;
+        font-size: 0.85em;
+        color: #555;
         text-decoration: none;
-        border-radius: 2px;
+        border-radius: 4px;
         transition: background 0.1s ease, color 0.1s ease;
 
         &:hover {
-          color: $text-color;
-          background: $lighter-gray;
+          color: #2c3e50;
+          background: rgba(90, 143, 189, 0.1);
         }
       }
 
       &.current a {
-        color: $link-color;
+        color: #5a8fbd;
         font-weight: 600;
-        background: #f0f7fb;
+        background: rgba(90, 143, 189, 0.12);
       }
     }
   }
@@ -437,7 +498,7 @@
 /* Right sidebar: TOC */
 .post-sidebar-right {
   position: relative;
-  padding-left: 12px;
+  padding-left: 1.5em;
 
   @media screen and (max-width: 1023px) {
     display: none;
@@ -445,8 +506,12 @@
 
   &.collapsed {
     flex: 0 0 0px;
-    padding-left: 12px;
+    padding-left: 0;
     overflow: visible;
+
+    .sidebar-inner {
+      display: none;
+    }
   }
 
   .toc-list {
@@ -456,27 +521,38 @@
 
     a {
       display: block;
-      padding: 0.25em 0;
-      font-size: 0.78em;
-      color: $gray;
+      padding: 0.4em 0.5em;
+      font-size: 0.82em;
+      color: #666;
       text-decoration: none;
-      border-bottom: 1px dotted $border-color;
-      transition: color 0.1s ease;
+      border-left: 2px solid transparent;
+      transition: color 0.1s ease, border-color 0.1s ease;
 
       &:hover {
-        color: $text-color;
+        color: #2c3e50;
+        border-left-color: #adb5bd;
       }
 
       &.active {
-        color: $link-color;
+        color: #5a8fbd;
         font-weight: 600;
-        border-bottom-color: $link-color;
+        border-left-color: #5a8fbd;
       }
     }
 
     ul {
       list-style: none;
       padding-left: 1em;
+      margin: 0;
+
+      ul {
+        padding-left: 0.8em;
+      }
+    }
+
+    > ul > li > a {
+      font-weight: 600;
+      color: #555;
     }
   }
 }
