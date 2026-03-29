@@ -14,35 +14,6 @@ layout: default
   {% endunless %}
 {% endif %}
 
-{% comment %}<!-- Build posts directory tree data -->{% endcomment %}
-{% assign filtered_posts = "" | split: "" %}
-{% for post in site.posts %}
-  {% if post.date < site.time %}
-    {% assign filtered_posts = filtered_posts | push: post %}
-  {% endif %}
-{% endfor %}
-
-{% comment %}<!-- Get unique directories -->{% endcomment %}
-{% assign sidebar_directories = "" | split: "" %}
-{% for post in filtered_posts %}
-  {% assign dir_name = post.path | split: "/" | shift | first %}
-  {% unless dir_name %}
-    {% assign dir_name = "__root__" %}
-  {% endunless %}
-  {% assign found = false %}
-  {% for dir in sidebar_directories %}
-    {% if dir == dir_name %}
-      {% assign found = true %}
-      {% break %}
-    {% endif %}
-  {% endfor %}
-  {% unless found %}
-    {% assign sidebar_directories = sidebar_directories | push: dir_name %}
-  {% endunless %}
-{% endfor %}
-
-{% assign sidebar_directories = sidebar_directories | sort %}
-
 <div id="main" role="main">
   {% comment %}<!-- Only show author sidebar on non-post pages -->{% endcomment %}
   {% unless page.collection == 'posts' %}
@@ -69,7 +40,7 @@ layout: default
         {% if page.collection == 'teaching' %}
           <p> {{ page.type }}, <i>{{ page.venue }}</i>, {{ page.date | default: "1900-01-01" | date: "%Y" }} </p>
         {% elsif page.venue and page.date %}
-          <p>Published in <i>{{ page.venue }}</i>, {{ page.date | default: "1900-01-01" | date: "%Y" }} </p>
+             <p>Published in <i>{{ page.venue }}</i>, {{ page.date | default: "1900-01-01" | date: "%Y" }} </p>
         {% elsif page.date %}
           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> {{ site.data.ui-text[site.locale].date_label | default: "Published:" }}</strong> <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | default: "1900-01-01" | date: "%B %d, %Y" }}</time></p>
         {% endif %}
@@ -77,80 +48,30 @@ layout: default
       {% endunless %}
 
       {% if page.collection == 'posts' %}
-        {% comment %}<!-- Three-column layout for blog posts -->{% endcomment %}
-        <div class="post-three-col">
+        {% comment %}<!-- Single-column layout for blog posts -->{% endcomment %}
+        <div class="post-content-main">
+          <section class="page__content" itemprop="text">
+            {{ content }}
 
-          {% comment %}<!-- Left sidebar: posts directory tree -->{% endcomment %}
-          <div class="post-sidebar-left" id="js-sidebar-left">
-            <div class="sidebar-toggle-btn sidebar-toggle-left" id="js-toggle-left" title="Toggle posts sidebar">
-              <i class="fas fa-chevron-left"></i>
-            </div>
-            <div class="sidebar-inner">
-              <h4 class="sidebar-heading"><i class="fas fa-sitemap"></i> Posts</h4>
-              <nav class="posts-dir-nav">
-                {% for dir in sidebar_directories %}
-                  {% unless dir == "__root__" %}
-                    {% assign dir_posts = "" | split: "" %}
-                    {% for post in filtered_posts %}
-                      {% assign post_dir = post.path | split: "/" | shift | first %}
-                      {% unless post_dir %}{% assign post_dir = "__root__" %}{% endunless %}
-                      {% if post_dir == dir %}
-                        {% assign dir_posts = dir_posts | push: post %}
-                      {% endif %}
-                    {% endfor %}
-                    <div class="nav-dir-group">
-                      <div class="nav-dir-header">{{ dir }}</div>
-                      <ul class="nav-dir-posts">
-                        {% for post in dir_posts %}
-                          <li{% if post.url == page.url %} class="current"{% endif %}>
-                            <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
-                          </li>
-                        {% endfor %}
-                      </ul>
-                    </div>
-                  {% endunless %}
-                {% endfor %}
-              </nav>
-            </div>
-          </div>
+            {% if page.citation and page.paperurl %}
+              <p style="font-size: smaller">Recommended citation: {{ page.citation }} <a href="{{ page.paperurl }}"><u>{{ page.paperurl }}</u></a></p>
+            {% elsif page.citation %}
+              <p style="font-size: smaller">Recommended citation: {{ page.citation }} </p>
+            {% endif %}
 
-          {% comment %}<!-- Main content -->{% endcomment %}
-          <div class="post-content-main">
-            <section class="page__content" itemprop="text">
-              {{ content }}
+            {% if page.link %}<div><a href="{{ page.link }}" class="btn">{{ site.data.ui-text[site.locale].ext_link_label | default: "Direct Link" }}</a></div>{% endif %}
+          </section>
 
-              {% if page.citation and page.paperurl %}
-                <p style="font-size: smaller">Recommended citation: {{ page.citation }} <a href="{{ page.paperurl }}"><u>{{ page.paperurl }}</u></a></p>
-              {% elsif page.citation %}
-                <p style="font-size: smaller">Recommended citation: {{ page.citation }} </p>
-              {% endif %}
+          <footer class="page__meta">
+            {% if site.data.ui-text[site.locale].meta_label %}
+              <h4 class="page__meta-title">{{ site.data.ui-text[site.locale].meta_label }}</h4>
+            {% endif %}
+            {% include page__taxonomy.html %}
+          </footer>
 
-              {% if page.link %}<div><a href="{{ page.link }}" class="btn">{{ site.data.ui-text[site.locale].ext_link_label | default: "Direct Link" }}</a></div>{% endif %}
-            </section>
+          {% if page.share %}{% include social-share.html %}{% endif %}
 
-            <footer class="page__meta">
-              {% if site.data.ui-text[site.locale].meta_label %}
-                <h4 class="page__meta-title">{{ site.data.ui-text[site.locale].meta_label }}</h4>
-              {% endif %}
-              {% include page__taxonomy.html %}
-            </footer>
-
-            {% if page.share %}{% include social-share.html %}{% endif %}
-
-            {% include post_pagination.html %}
-          </div>
-
-          {% comment %}<!-- Right sidebar: TOC -->{% endcomment %}
-          <div class="post-sidebar-right" id="js-sidebar-right">
-            <div class="sidebar-toggle-btn sidebar-toggle-right" id="js-toggle-right" title="Toggle TOC">
-              <i class="fas fa-chevron-right"></i>
-            </div>
-            <div class="sidebar-inner">
-              <h4 class="sidebar-heading"><i class="fas fa-list"></i> On This Page</h4>
-              <div class="toc-list" id="js-toc-list"></div>
-            </div>
-          </div>
-
+          {% include post_pagination.html %}
         </div>
       {% else %}
         <section class="page__content" itemprop="text">
@@ -199,87 +120,96 @@ layout: default
 </div>
 
 {% if page.collection == 'posts' %}
+<div class="post-toc-float" id="js-toc-float">
+  <div class="toc-float-header">
+    <span class="toc-float-title"><i class="fas fa-stream"></i> On This Page</span>
+    <button class="toc-eye-btn" id="js-toc-eye" title="Hide TOC">
+      <i class="fas fa-eye"></i>
+    </button>
+  </div>
+  <div class="toc-float-body">
+    <div id="js-toc-list"></div>
+  </div>
+</div>
+<button class="toc-ghost-btn" id="js-toc-restore" title="Show TOC" style="display:none">
+  <i class="fas fa-stream"></i>
+</button>
 <script>
 (function() {
-  // === TOC generation ===
   var content = document.querySelector('.post-content-main .page__content');
   var tocList = document.getElementById('js-toc-list');
-  var rightSidebar = document.getElementById('js-sidebar-right');
-  var rightToggle = document.getElementById('js-toggle-right');
+  var tocFloat = document.getElementById('js-toc-float');
+  var tocEye = document.getElementById('js-toc-eye');
+  var tocRestore = document.getElementById('js-toc-restore');
 
-  if (content && tocList) {
-    var headings = content.querySelectorAll('h2, h3');
-    if (headings.length === 0) {
-      rightSidebar.style.display = 'none';
-      rightToggle.style.display = 'none';
-    } else {
-      headings.forEach(function(h, i) {
-        if (!h.id) h.id = 'section-' + i;
-      });
-      var stack = [document.createElement('ul')];
-      tocList.appendChild(stack[0]);
-      var cur = 0;
-      headings.forEach(function(h) {
-        var lv = parseInt(h.tagName.charAt(1), 10);
-        var li = document.createElement('li');
-        var a = document.createElement('a');
-        a.href = '#' + h.id;
-        a.textContent = h.textContent;
-        li.appendChild(a);
-        while (lv < cur) { stack.pop(); cur--; }
-        if (lv > cur) {
-          var ul = document.createElement('ul');
-          stack[stack.length - 1].lastChild.appendChild(ul);
-          stack.push(ul);
-          cur = lv;
-        }
-        stack[stack.length - 1].appendChild(li);
-      });
+  if (!content || !tocList) return;
 
-      // Show toggle button when TOC has content
-      rightToggle.style.display = 'flex';
-    }
+  var headings = Array.prototype.slice.call(content.querySelectorAll('h2, h3'));
+  if (headings.length === 0) {
+    if (tocFloat) tocFloat.style.display = 'none';
+    return;
   }
 
-  // === Sidebar toggle ===
-  function bindToggle(btnId, sidebarId, dir) {
-    var btn = document.getElementById(btnId);
-    var sidebar = document.getElementById(sidebarId);
-    if (!btn || !sidebar) return;
-    btn.addEventListener('click', function() {
-      sidebar.classList.toggle('collapsed');
-      var icon = btn.querySelector('i');
-      if (dir === 'left') {
-        icon.classList.toggle('fa-chevron-left');
-        icon.classList.toggle('fa-chevron-right');
-      } else {
-        icon.classList.toggle('fa-chevron-right');
-        icon.classList.toggle('fa-chevron-left');
+  headings.forEach(function(h, i) {
+    if (!h.id) h.id = 'toc-' + i;
+  });
+
+  var rootUl = document.createElement('ul');
+  tocList.appendChild(rootUl);
+  var currentH2Li = null;
+  var currentH3Ul = null;
+
+  headings.forEach(function(h) {
+    var li = document.createElement('li');
+    var a = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    li.appendChild(a);
+    if (h.tagName === 'H2') {
+      rootUl.appendChild(li);
+      currentH2Li = li;
+      currentH3Ul = null;
+    } else {
+      if (!currentH3Ul) {
+        currentH3Ul = document.createElement('ul');
+        if (currentH2Li) {
+          currentH2Li.appendChild(currentH3Ul);
+        } else {
+          rootUl.appendChild(currentH3Ul);
+        }
+      }
+      currentH3Ul.appendChild(li);
+    }
+  });
+
+  if (tocEye) {
+    tocEye.addEventListener('click', function() {
+      tocFloat.classList.add('toc-hidden');
+      tocRestore.style.display = 'flex';
+    });
+  }
+
+  if (tocRestore) {
+    tocRestore.addEventListener('click', function() {
+      tocFloat.classList.remove('toc-hidden');
+      tocRestore.style.display = 'none';
+    });
+  }
+
+  var tocLinks = tocList.querySelectorAll('a');
+  window.addEventListener('scroll', function() {
+    var scrollY = window.scrollY + 120;
+    var active = null;
+    headings.forEach(function(h) {
+      if (h.offsetTop <= scrollY) active = h;
+    });
+    tocLinks.forEach(function(a) {
+      a.classList.remove('active');
+      if (active && a.getAttribute('href') === '#' + active.id) {
+        a.classList.add('active');
       }
     });
-  }
-  bindToggle('js-toggle-left', 'js-sidebar-left', 'left');
-  bindToggle('js-toggle-right', 'js-sidebar-right', 'right');
-
-  // === Scroll-spy for TOC ===
-  var contentEl = document.querySelector('.post-content-main .page__content');
-  var tocLinks = tocList ? tocList.querySelectorAll('a') : [];
-  if (contentEl && tocLinks.length > 0) {
-    var headings = contentEl.querySelectorAll('h2, h3');
-    window.addEventListener('scroll', function() {
-      var scrollY = window.scrollY + 100;
-      var active = null;
-      headings.forEach(function(h) {
-        if (h.offsetTop <= scrollY) active = h;
-      });
-      tocLinks.forEach(function(a) {
-        a.classList.remove('active');
-        if (active && a.getAttribute('href') === '#' + active.id) {
-          a.classList.add('active');
-        }
-      });
-    });
-  }
+  });
 })();
 </script>
 {% endif %}

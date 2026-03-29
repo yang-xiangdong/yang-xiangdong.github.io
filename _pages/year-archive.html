@@ -49,21 +49,21 @@ redirect_from:
           {% assign dir_posts = dir_posts | push: post %}
         {% endif %}
       {% endfor %}
-      <div class="dir-group">
-        <div class="dir-header">
-          <i class="fas fa-folder-open"></i>
-          <span>{{ dir }}</span>
+      <details class="dir-group" open>
+        <summary class="dir-toggle">
+          <span class="dir-chevron"></span>
+          <span class="dir-name">{{ dir }}</span>
           <span class="dir-count">{{ dir_posts.size }}</span>
-        </div>
+        </summary>
         <ul class="dir-posts">
           {% for post in dir_posts %}
             <li>
-              <span class="tree-icon">├─</span>
               <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+              <span class="post-date">{{ post.date | date: "%b %d, %Y" }}</span>
             </li>
           {% endfor %}
         </ul>
-      </div>
+      </details>
     {% endunless %}
   {% endfor %}
 </div>
